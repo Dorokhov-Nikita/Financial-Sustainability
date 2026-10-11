@@ -3,7 +3,7 @@ let currentUser = null;
 let currentPage = 'home';
 
 // Pages available to authenticated users
-const authenticatedPages = ['profile', 'reference', 'assessment', 'result'];
+const authenticatedPages = ['profile', 'reference', 'assessment', 'result', 'history', 'analytics'];
 const publicPages = ['home', 'login', 'register'];
 
 // Initialize on page load
@@ -44,6 +44,11 @@ function setupEventListeners() {
         }
     });
 
+    // Profile button
+    document.getElementById('profileBtn').addEventListener('click', () => {
+        navigateTo('profile');
+    });
+
     // Logout button
     document.getElementById('logoutBtn').addEventListener('click', logout);
 }
@@ -51,6 +56,7 @@ function setupEventListeners() {
 function updateUI() {
     const nav = document.getElementById('nav');
     const usernameEl = document.getElementById('username');
+    const profileBtn = document.getElementById('profileBtn');
     const logoutBtn = document.getElementById('logoutBtn');
 
     nav.innerHTML = '';
@@ -60,6 +66,8 @@ function updateUI() {
         const pages = [
             { name: 'Home', id: 'home' },
             { name: 'Assessment', id: 'assessment' },
+            { name: 'History', id: 'history' },
+            { name: 'Analytics', id: 'analytics' },
             { name: 'Reference', id: 'reference' }
         ];
 
@@ -72,6 +80,7 @@ function updateUI() {
         });
 
         usernameEl.textContent = `Welcome, ${currentUser.username}`;
+        profileBtn.style.display = 'inline-block';
         logoutBtn.style.display = 'inline-block';
     } else {
         // Show navigation for non-authenticated users
@@ -90,6 +99,7 @@ function updateUI() {
         });
 
         usernameEl.textContent = '';
+        profileBtn.style.display = 'none';
         logoutBtn.style.display = 'none';
     }
 }
@@ -124,6 +134,12 @@ function navigateTo(page, param = null) {
             break;
         case 'assessment':
             renderAssessment();
+            break;
+        case 'history':
+            renderHistoryPage();
+            break;
+        case 'analytics':
+            renderAnalyticsPage();
             break;
         case 'result':
             renderResult(param);

@@ -79,8 +79,9 @@ function updateFeaturesForm() {
                 <input type="number" 
                        step="0.0001" 
                        id="feature_${feature.name}" 
-                       placeholder="Enter value" 
-                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                       placeholder="Enter value (use . for decimal)" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                       onkeypress="if(event.key===','){event.preventDefault();return false;}">
             </div>
         `;
     });
@@ -135,11 +136,12 @@ async function submitAssessment() {
         if (!isValid) return;
         
         const result = await API.analyzeAssessment(modelType, features);
-        
         currentAssessment = result;
-        navigateTo('result', result.assessment_id);
+        const assessmentIdStr = String(result.assessment_id);
+        navigateTo('result', assessmentIdStr);
         
     } catch (error) {
+        console.error('[ERROR] Analysis failed:', error);
         showAlert('assessmentAlert', `Error: ${error.message}`, 'error');
     }
 }
@@ -157,7 +159,11 @@ async function submitCSV() {
         const file = fileInput.files[0];
         const text = await file.text();
         const lines = text.trim().split('\n');
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        // Try to parse headers - handle both with and without leading spaces
+        const rawHeaders = lines[0].split(',').map(h => h.trim());
+        const headersLower = rawHeaders.map(h => h.toLowerCase());
+        const headersWithSpace = rawHeaders.map(h => ' ' + h);
         
         if (lines.length < 2) {
             document.getElementById('fileError').innerText = 'CSV must have at least one data row';
@@ -170,19 +176,39 @@ async function submitCSV() {
         const numFeatures = modelType === 'model_30' ? 30 : 50;
         const featuresToUse = allFeatures.slice(0, numFeatures);
         
-        for (let i = 0; i < Math.min(headers.length, values.length); i++) {
-            const feature = featuresToUse.find(f => f.name === headers[i]);
-            if (feature && !isNaN(values[i])) {
+        for (let i = 0; i < Math.min(rawHeaders.length, values.length); i++) {
+            if (isNaN(values[i])) continue;
+            
+            const headerLower = headersLower[i];
+            const headerWithSpace = headersWithSpace[i];
+            
+            // Try to find matching feature
+            let feature = featuresToUse.find(f => f.name === headerLower);
+            if (!feature) {
+                feature = featuresToUse.find(f => f.description.toLowerCase() === headerLower);
+            }
+            if (!feature) {
+                feature = featuresToUse.find(f => f.description === headerWithSpace.trim());
+            }
+            
+            if (feature) {
                 features[feature.name] = values[i];
             }
         }
         
+        console.log('[submitCSV] About to call API.analyzeAssessment with modelType:', modelType);
         const result = await API.analyzeAssessment(modelType, features);
+        console.log('[submitCSV] CSV Analysis result from API:', result);
+        console.log('[submitCSV] result.assessment_id:', result.assessment_id, 'type:', typeof result.assessment_id);
         
         currentAssessment = result;
-        navigateTo('result', result.assessment_id);
+        const assessmentIdStr = String(result.assessment_id);
+        console.log('[submitCSV] After String() conversion:', assessmentIdStr, 'type:', typeof assessmentIdStr);
+        console.log('[submitCSV] About to call navigateTo with:', 'result', assessmentIdStr);
+        navigateTo('result', assessmentIdStr);
         
     } catch (error) {
+        console.error('[ERROR] CSV Analysis failed:', error);
         document.getElementById('fileError').innerText = `Error: ${error.message}`;
     }
 }

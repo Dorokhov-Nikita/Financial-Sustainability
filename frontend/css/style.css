@@ -162,6 +162,15 @@ body {
     background-color: rgba(255,255,255,0.3);
 }
 
+.btn-profile {
+    background-color: rgba(255,255,255,0.2);
+    color: white;
+}
+
+.btn-profile:hover {
+    background-color: rgba(255,255,255,0.3);
+}
+
 /* Content Sections */
 .page {
     animation: fadeIn 0.3s ease;

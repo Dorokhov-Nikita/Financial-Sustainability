@@ -1,5 +1,5 @@
 // Result Page
-async function renderResult(assessmentId) {
+function renderResult(assessmentId) {
     const content = document.getElementById('content');
     
     if (!assessmentId) {
@@ -28,10 +28,17 @@ async function renderResult(assessmentId) {
         </div>
     `;
     
+    loadAndDisplayResult(assessmentId);
+}
+
+async function loadAndDisplayResult(assessmentId) {
+    const content = document.getElementById('content');
+    
     try {
         const result = await API.getAssessment(assessmentId);
         displayResultsContent(result);
     } catch (error) {
+        console.error('Failed to load assessment:', error);
         content.innerHTML = `
             <div class="page">
                 <div class="container">
@@ -46,11 +53,30 @@ async function renderResult(assessmentId) {
 function displayResultsContent(assessment) {
     const content = document.getElementById('content');
     
-    const statusClass = assessment.prediction === 1 ? 'alert-warning' : 'alert-success';
-    const statusText = assessment.prediction === 1 ? 'At Risk' : 'Stable';
-    const riskColor = assessment.risk_level === 'high' ? '#dc3545' : assessment.risk_level === 'medium' ? '#ffc107' : '#28a745';
     const probabilityPercent = (assessment.probability * 100).toFixed(2);
     
+    // Determine status color and display text
+    let statusColor, statusBgGradient;
+    const prob = assessment.probability;
+    
+    if (prob > 0.85) {
+        statusColor = '#dc3545';
+        statusBgGradient = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+    } else if (prob > 0.65) {
+        statusColor = '#fd7e14';
+        statusBgGradient = 'linear-gradient(135deg, #fd7e14 0%, #e86c0c 100%)';
+    } else if (prob > 0.45) {
+        statusColor = '#ffc107';
+        statusBgGradient = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
+    } else if (prob > 0.25) {
+        statusColor = '#17a2b8';
+        statusBgGradient = 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)';
+    } else {
+        statusColor = '#28a745';
+        statusBgGradient = 'linear-gradient(135deg, #28a745 0%, #218838 100%)';
+    }
+    
+    const statusDisplayText = assessment.status.charAt(0).toUpperCase() + assessment.status.slice(1);
     const modelTypeText = assessment.model_type === 'model_30' ? 'Random Forest (30 Features)' : 'LightGBM SMOTE (50 Features)';
     
     content.innerHTML = `
@@ -58,10 +84,10 @@ function displayResultsContent(assessment) {
             <div class="container">
                 <h2 style="margin-bottom: 30px;">Assessment Results</h2>
 
-                <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; margin-bottom: 20px;">
+                <div class="card" style="background: ${statusBgGradient}; color: white; padding: 30px; margin-bottom: 20px;">
                     <div style="text-align: center;">
-                        <h3>Overall Financial Status</h3>
-                        <div style="font-size: 3em; font-weight: bold; margin: 20px 0; text-transform: uppercase;">${statusText}</div>
+                        <h3>Financial Risk Assessment</h3>
+                        <div style="font-size: 3em; font-weight: bold; margin: 20px 0; text-transform: uppercase;">${statusDisplayText}</div>
                         <div style="font-size: 1.2em;">
                             Bankruptcy Risk: <strong>${probabilityPercent}%</strong>
                         </div>
@@ -72,7 +98,7 @@ function displayResultsContent(assessment) {
                     <div class="card">
                         <h3>Model Information</h3>
                         <p><strong>Model Used:</strong> ${modelTypeText}</p>
-                        <p><strong>Risk Level:</strong> <span style="color: ${riskColor}; font-weight: bold; text-transform: uppercase;">${assessment.risk_level}</span></p>
+                        <p><strong>Risk Status:</strong> <span style="color: ${statusColor}; font-weight: bold; text-transform: uppercase;">${statusDisplayText}</span></p>
                         <p><strong>Prediction Threshold:</strong> ${assessment.threshold.toFixed(3)}</p>
                     </div>
 

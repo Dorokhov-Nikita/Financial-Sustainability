@@ -21,7 +21,8 @@ function renderHistoryPage() {
 
 async function loadHistoryData() {
     try {
-        const assessments = await API.getAssessments();
+        const data = await API.getAssessmentHistory();
+        const assessments = data.assessments || [];
         renderHistoryListContent(assessments);
     } catch (error) {
         const content = document.getElementById('historyContent');
@@ -41,48 +42,54 @@ function renderHistoryListContent(assessments) {
         return;
     }
 
-    // Sort by date descending
-    const sorted = assessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
     let html = `
         <div class="card">
             <div class="table-container">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Title</th>
+                            <th>ID</th>
                             <th>Date</th>
-                            <th>Revenue</th>
-                            <th>Score</th>
+                            <th>Model</th>
                             <th>Status</th>
+                            <th>Probability</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
     `;
 
-    sorted.forEach(assessment => {
-        const score = assessment.result ? Math.round(assessment.result.sustainability_score) + '/100' : '-';
-        const health = assessment.result ? assessment.result.overall_health : '-';
+    assessments.forEach(assessment => {
         const date = new Date(assessment.created_at).toLocaleDateString('en-US', { 
             year: 'numeric', 
-            month: 'long', 
+            month: 'short', 
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
         });
-        const revenue = assessment.revenue ? '$' + (assessment.revenue / 1000000).toFixed(1) + 'M' : '-';
+        
+        const modelName = assessment.model_type === 'model_30' ? 'Random Forest (30)' : 'LightGBM SMOTE (50)';
+        const statusDisplayText = assessment.status.charAt(0).toUpperCase() + assessment.status.slice(1);
+        
+        // Color badges based on status
+        let statusClass = 'badge-success';
+        if (assessment.probability > 0.85) statusClass = 'badge-danger';
+        else if (assessment.probability > 0.65) statusClass = 'badge-warning';
+        else if (assessment.probability > 0.45) statusClass = 'badge-warning';
+        else if (assessment.probability > 0.25) statusClass = 'badge-info';
+        
+        const probabilityPercent = (assessment.probability * 100).toFixed(1);
 
         html += `
             <tr>
-                <td><strong>${assessment.title}</strong></td>
+                <td>#${assessment.id}</td>
                 <td>${date}</td>
-                <td>${revenue}</td>
-                <td>${score}</td>
-                <td><span class="badge ${health === 'Excellent' ? 'badge-success' : health === 'Good' ? 'badge-info' : health === 'Fair' ? 'badge-warning' : health === 'Poor' ? 'badge-danger' : 'badge-info'}">${health}</span></td>
+                <td>${modelName}</td>
+                <td><span class="badge ${statusClass}">${statusDisplayText}</span></td>
+                <td>${probabilityPercent}%</td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn btn-primary" onclick="navigateTo('result', ${assessment.id})">View</button>
+                        <button class="btn btn-primary" onclick="navigateTo('result', '${assessment.id}')">View</button>
                     </div>
                 </td>
             </tr>

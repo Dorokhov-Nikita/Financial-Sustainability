@@ -38,8 +38,7 @@ class FinancialAssessment(db.Model):
     
     # Model and result info
     model_type = db.Column(db.String(20), nullable=False)  # 'model_30' or 'model_50'
-    prediction = db.Column(db.Integer, nullable=False)  # 0 or 1 (not bankrupt or bankrupt)
-    probability = db.Column(db.Float, nullable=False)  # Probability of bankruptcy
+    probability = db.Column(db.Float, nullable=False)  # Probability of bankruptcy (0-1)
     
     # All 50 features stored
     net_income_assets = db.Column(db.Float)
@@ -93,13 +92,49 @@ class FinancialAssessment(db.Model):
     current_asset_turnover = db.Column(db.Float)
     net_worth_turnover = db.Column(db.Float)
     
-    def to_dict(self):
+    def to_dict(self, include_features=False):
         """Convert to dictionary"""
-        return {
+        prob = self.probability
+        
+        if prob > 0.85:
+            status = 'critical'
+        elif prob > 0.65:
+            status = 'warning'
+        elif prob > 0.45:
+            status = 'alert'
+        elif prob > 0.25:
+            status = 'caution'
+        else:
+            status = 'safe'
+        
+        result = {
             'id': self.id,
             'user_id': self.user_id,
             'created_at': self.created_at.isoformat(),
             'model_type': self.model_type,
-            'prediction': self.prediction,
             'probability': self.probability,
+            'status': status
         }
+        
+        # Include all features if requested
+        if include_features:
+            feature_names = [
+                'net_income_assets', 'net_worth_assets', 'eps_persist', 'retained_earn_assets',
+                'net_income_equity', 'borrowing_dep', 'curr_liab_assets', 'working_cap_assets',
+                'curr_liab_curr_assets', 'net_value_share_a', 'total_exp_assets', 'working_cap_equity',
+                'equity_lt_liab', 'cfo_assets', 'tax_rate_a', 'inventory_ar_net_value',
+                'gross_profit_sales', 'cash_assets', 'liability_assets_flag', 'op_profit_person',
+                'cash_reinvestment', 'quick_assets_assets', 'cash_curr_liab', 'equity_liability',
+                'oper_funds_liability', 'contingent_liab_net_worth', 'fixed_assets_turnover_freq',
+                'cash_flow_assets', 'fixed_assets_assets', 'cash_flow_equity', 'cash_flow_share',
+                'total_asset_turnover', 'current_ratio', 'cash_flow_liability', 'total_asset_growth',
+                'assets_gnp', 'current_assets_assets', 'asset_return_growth', 'quick_ratio',
+                'total_debt_net_worth', 'after_tax_profit_growth', 'lt_fund_suitability',
+                'rd_expense_rate', 'interest_bearing_debt_rate', 'curr_liab_liability',
+                'quick_asset_turnover', 'sales_gross_profit_growth', 'non_industry_income_revenue',
+                'current_asset_turnover', 'net_worth_turnover'
+            ]
+            for feature_name in feature_names:
+                result[feature_name] = getattr(self, feature_name, None)
+        
+        return result

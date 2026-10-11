@@ -14,16 +14,19 @@ class API {
         };
 
         try {
+            console.log(`[API] ${options.method || 'GET'} ${endpoint}`);
             const response = await fetch(url, defaultOptions);
             const data = await response.json();
 
             if (!response.ok) {
+                console.error(`[API ERROR] ${endpoint}: ${data.error}`);
                 throw new Error(data.error || `HTTP ${response.status}`);
             }
 
+            console.log(`[API OK] ${endpoint}:`, data);
             return data;
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('[API Error]:', error);
             throw error;
         }
     }

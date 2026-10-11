@@ -97,18 +97,33 @@ def analyze():
             return jsonify({'error': 'Features must be a dictionary'}), 400
         
         # Load model and get its metadata
-        model_artifact = load_model(model_type)
-        model = model_artifact['model']
-        model_features = model_artifact['features']  # These are now cleaned
-        threshold = model_artifact['threshold']
+        # Create reverse mapping (description to db_name)
+        DESCRIPTION_TO_DBNAME = {}
+        for db_name, description_with_space in FEATURE_MAPPING.items():
+            desc_clean = description_with_space.strip()
+            DESCRIPTION_TO_DBNAME[desc_clean.lower()] = db_name
+        
+        # Handle both direct feature names and description-based lookup
+        normalized_features = {}
+        for key, value in features_data.items():
+            if key in features_data:
+                normalized_features[key] = value
+            elif key.lower() in DESCRIPTION_TO_DBNAME:
+                normalized_features[DESCRIPTION_TO_DBNAME[key.lower()]] = value
+            elif (' ' + key) in FEATURE_MAPPING.values():
+                # If key has leading space added
+                for db_name, mapped_name in FEATURE_MAPPING.items():
+                    if mapped_name == (' ' + key):
+                        normalized_features[db_name] = value
+                        break
         
         # Map our feature names to model feature names and create data
         X_dict = {}
-        for our_name in features_data:
+        for our_name in normalized_features:
             # Get the mapped feature name (with leading space as in original data)
             mapped_name = FEATURE_MAPPING.get(our_name)
-            if mapped_name in model_features:
-                X_dict[mapped_name] = features_data[our_name]
+            if mapped_name and mapped_name in model_features:
+                X_dict[mapped_name] = normalized_features[our_name]
         
         # Create DataFrame with the required features in the right order
         X = pd.DataFrame([{f: X_dict.get(f) for f in model_features}])
@@ -122,14 +137,25 @@ def analyze():
         
         # Make prediction
         prediction_prob = model.predict_proba(X)[:, 1][0]
-        prediction = 1 if prediction_prob >= threshold else 0
+        
+        # Determine status based on probability
+        prob = float(prediction_prob)
+        if prob > 0.85:
+            status = 'critical'
+        elif prob > 0.65:
+            status = 'warning'
+        elif prob > 0.45:
+            status = 'alert'
+        elif prob > 0.25:
+            status = 'caution'
+        else:
+            status = 'safe'
         
         # Save to database
         assessment = FinancialAssessment(
             user_id=user_id,
             model_type=model_type,
-            prediction=prediction,
-            probability=float(prediction_prob)
+            probability=prob
         )
         
         # Store all features in the database
@@ -143,11 +169,9 @@ def analyze():
         return jsonify({
             'assessment_id': assessment.id,
             'model_type': model_type,
-            'prediction': prediction,
-            'probability': float(prediction_prob),
+            'probability': prob,
             'threshold': threshold,
-            'status': 'bankrupt' if prediction == 1 else 'stable',
-            'risk_level': 'high' if prediction_prob >= 0.7 else 'medium' if prediction_prob >= 0.3 else 'low'
+            'status': status
         }), 201
     
     except FileNotFoundError as e:
@@ -171,7 +195,7 @@ def get_history():
         ).all()
         
         return jsonify({
-            'assessments': [a.to_dict() for a in assessments]
+            'assessments': [a.to_dict(include_features=True) for a in assessments]
         }), 200
     
     except Exception as e:
@@ -200,6 +224,13 @@ def get_assessment(assessment_id):
         # Add all features
         for feature_name in FEATURE_NAMES:
             result[feature_name] = getattr(assessment, feature_name)
+        
+        # Load model to get threshold
+        try:
+            model_artifact = load_model(assessment.model_type)
+            result['threshold'] = model_artifact['threshold']
+        except:
+            result['threshold'] = 0.5
         
         return jsonify(result), 200
     
