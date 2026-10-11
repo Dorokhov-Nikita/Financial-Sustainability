@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Sustainability Assessment</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header/Navigation -->
+        <header id="header" class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <h1>Financial Sustainability</h1>
+                    </div>
+                    <nav id="nav" class="nav">
+                        <!-- Navigation will be dynamically populated -->
+                    </nav>
+                    <div class="user-menu">
+                        <span id="username" class="username"></span>
+                        <button id="logoutBtn" class="btn btn-logout" style="display:none;">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div id="content" class="content">
+                <!-- Content will be dynamically populated -->
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>&copy; 2026 Financial Sustainability. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/pages/home.js"></script>
+    <script src="js/pages/auth.js"></script>
+    <script src="js/pages/profile.js"></script>
+    <script src="js/pages/assessment.js"></script>
+    <script src="js/pages/result.js"></script>
+    <script src="js/pages/reference.js"></script>
+    <script src="js/pages/analytics.js"></script>
+    <script src="js/pages/history.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
