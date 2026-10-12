@@ -40,17 +40,26 @@ function showInputMode() {
             <h3>Enter Financial Indicators</h3>
             <p style="color: var(--text-light); margin-bottom: 20px;">Select model type and enter financial data</p>
             
-            <div style="margin-bottom: 20px;">
-                <label>Model Type:</label>
-                <select id="modelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="model_30">Random Forest (30 Features)</option>
-                    <option value="model_50">LightGBM SMOTE (50 Features)</option>
-                </select>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div>
+                    <label>Model Type:</label>
+                    <select id="modelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="model_30">Random Forest (30)</option>
+                        <option value="model_50">LightGBM SMOTE (50)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Company ID:</label>
+                    <input type="number" id="companyId" placeholder="Optional" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
             </div>
 
             <div id="featuresForm"></div>
             
-            <button class="btn btn-success" onclick="submitAssessment()" style="width: 100%; margin-top: 20px;">Analyze</button>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-success" onclick="submitAssessment()" style="flex: 1;">Analyze</button>
+                <button class="btn btn-secondary" onclick="navigateTo('reference')" style="flex: 1;" title="View financial indicator explanations">📖 Reference</button>
+            </div>
         </div>
     `;
     
@@ -98,25 +107,240 @@ function showFileMode() {
             <h3>Upload CSV File</h3>
             <p style="color: var(--text-light); margin-bottom: 20px;">CSV should have columns matching the financial indicators</p>
             
-            <div style="margin-bottom: 20px;">
-                <label>Model Type:</label>
-                <select id="fileModelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="model_30">Random Forest (30 Features)</option>
-                    <option value="model_50">LightGBM SMOTE (50 Features)</option>
-                </select>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div>
+                    <label>Model Type:</label>
+                    <select id="fileModelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="model_30">Random Forest (30)</option>
+                        <option value="model_50">LightGBM SMOTE (50)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Company ID:</label>
+                    <input type="number" id="fileCompanyId" placeholder="Optional" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
             </div>
 
-            <input type="file" id="csvFile" accept=".csv" style="margin-bottom: 20px;">
+            <input type="file" id="csvFile" accept=".csv" style="margin-bottom: 20px;" onchange="handleCSVUpload()">
             <div id="fileError" style="color: red; margin-bottom: 10px;"></div>
-            
-            <button class="btn btn-success" onclick="submitCSV()" style="width: 100%;">Analyze</button>
+            <div id="csvFieldsContainer" style="display: none;"></div>
         </div>
     `;
+}
+
+async function handleCSVUpload() {
+    try {
+        const fileInput = document.getElementById('csvFile');
+        const modelType = document.getElementById('fileModelType').value;
+        const fileError = document.getElementById('fileError');
+        const fieldsContainer = document.getElementById('csvFieldsContainer');
+        
+        fileError.innerText = '';
+        
+        if (!fileInput.files.length) {
+            fieldsContainer.style.display = 'none';
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const text = await file.text();
+        const lines = text.trim().split('\n');
+        
+        if (lines.length < 2) {
+            fileError.innerText = 'CSV must have at least one data row';
+            fieldsContainer.style.display = 'none';
+            return;
+        }
+        
+        const rawHeaders = lines[0].split(',').map(h => h.trim());
+        const headersLower = rawHeaders.map(h => h.toLowerCase());
+        const headersWithSpace = rawHeaders.map(h => ' ' + h);
+        const values = lines[1].split(',').map(v => parseFloat(v.trim()));
+        
+        const numFeatures = modelType === 'model_30' ? 30 : 50;
+        const featuresToUse = allFeatures.slice(0, numFeatures);
+        
+        const parsedFeatures = {};
+        
+        for (let i = 0; i < Math.min(rawHeaders.length, values.length); i++) {
+            if (isNaN(values[i])) continue;
+            
+            const headerLower = headersLower[i];
+            const headerWithSpace = headersWithSpace[i];
+            
+            let feature = featuresToUse.find(f => f.name === headerLower);
+            if (!feature) {
+                feature = featuresToUse.find(f => f.description.toLowerCase() === headerLower);
+            }
+            if (!feature) {
+                feature = featuresToUse.find(f => f.description === headerWithSpace.trim());
+            }
+            
+            if (feature) {
+                parsedFeatures[feature.name] = values[i];
+            }
+        }
+        
+        // Show form with parsed values
+        renderCSVFieldsForm(parsedFeatures, modelType);
+        fieldsContainer.style.display = 'block';
+        
+    } catch (error) {
+        console.error('CSV Upload Error:', error);
+        document.getElementById('fileError').innerText = `Error: ${error.message}`;
+        document.getElementById('csvFieldsContainer').style.display = 'none';
+    }
+}
+
+function renderCSVFieldsForm(parsedFeatures, modelType) {
+    const numFeatures = modelType === 'model_30' ? 30 : 50;
+    const featuresToUse = allFeatures.slice(0, numFeatures);
+    const container = document.getElementById('csvFieldsContainer');
+    
+    let html = '<h4 style="margin-top: 20px; margin-bottom: 15px;">Review and Edit Values:</h4>';
+    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+    
+    featuresToUse.forEach(feature => {
+        const value = parsedFeatures[feature.name] || '';
+        html += `
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 0.9em;">
+                    ${feature.description}
+                </label>
+                <input type="number" 
+                       step="0.0001" 
+                       id="csv_feature_${feature.name}" 
+                       value="${value || ''}"
+                       placeholder="Enter value (use . for decimal)" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                       onkeypress="if(event.key===','){event.preventDefault();return false;}">
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    html += '<div style="display: flex; gap: 10px; margin-top: 20px;">';
+    html += '<button class="btn btn-success" onclick="submitCSVAnalysis()" style="flex: 1;">Analyze</button>';
+    html += '<button class="btn btn-secondary" onclick="navigateTo(\'reference\')" style="flex: 1;" title="View financial indicator explanations">📖 Reference</button>';
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+async function submitCSVAnalysis() {
+    try {
+        const modelType = document.getElementById('fileModelType').value;
+        const companyId = document.getElementById('fileCompanyId').value ? parseInt(document.getElementById('fileCompanyId').value) : null;
+        const numFeatures = modelType === 'model_30' ? 30 : 50;
+        const featuresToUse = allFeatures.slice(0, numFeatures);
+        
+        const features = {};
+        const emptyFields = [];
+        
+        for (const feature of featuresToUse) {
+            const value = document.getElementById(`csv_feature_${feature.name}`).value;
+            if (!value) {
+                emptyFields.push(feature);
+            } else {
+                features[feature.name] = parseFloat(value);
+            }
+        }
+        
+        // If there are empty fields, show warning dialog
+        if (emptyFields.length > 0) {
+            showMedianFillDialog(emptyFields, features, modelType, companyId);
+            return;
+        }
+        
+        // All fields filled, proceed with analysis
+        const result = await API.analyzeAssessment(modelType, features, companyId);
+        currentAssessment = result;
+        const assessmentIdStr = String(result.assessment_id);
+        navigateTo('result', assessmentIdStr);
+        
+    } catch (error) {
+        console.error('[ERROR] CSV Analysis failed:', error);
+        document.getElementById('fileError').innerText = `Error: ${error.message}`;
+    }
+}
+
+// Global variable to store pending features for median fill
+let pendingMedianFill = {
+    features: {},
+    modelType: null,
+    companyId: null
+};
+
+async function showMedianFillDialog(emptyFields, filledFeatures, modelType, companyId = null) {
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modalBody');
+    
+    try {
+        const medianData = await API.getMedians(modelType);
+        const medians = medianData.medians;
+        
+        // Store features globally for confirmMedianFill to access
+        pendingMedianFill.features = filledFeatures;
+        pendingMedianFill.modelType = modelType;
+        pendingMedianFill.medians = medians;
+        pendingMedianFill.companyId = companyId;
+        
+        const emptyFieldsList = emptyFields.map(f => f.description).join('<br>');
+        
+        modalBody.innerHTML = `
+            <h3>Fill Missing Values?</h3>
+            <p style="margin: 15px 0;">The following fields are empty:</p>
+            <div style="background-color: #f0f0f0; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 200px; overflow-y: auto;">
+                ${emptyFieldsList}
+            </div>
+            <p style="margin-bottom: 15px;">Would you like to fill them with median values from the training data?</p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-success" onclick="confirmMedianFill()" style="flex: 1;">Agree</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('modal').style.display = 'none';" style="flex: 1;">Cancel</button>
+            </div>
+        `;
+        
+        modal.style.display = 'flex';
+        
+    } catch (error) {
+        console.error('Error fetching medians:', error);
+        document.getElementById('fileError').innerText = 'Error loading median values';
+    }
+}
+
+async function confirmMedianFill() {
+    try {
+        const { features: filledFeatures, modelType, medians, companyId } = pendingMedianFill;
+        
+        const numFeatures = modelType === 'model_30' ? 30 : 50;
+        const featuresToUse = allFeatures.slice(0, numFeatures);
+        
+        // Fill in medians for empty fields
+        for (const feature of featuresToUse) {
+            if (!filledFeatures[feature.name] && medians[feature.name] !== undefined) {
+                filledFeatures[feature.name] = medians[feature.name];
+            }
+        }
+        
+        // Close modal
+        document.getElementById('modal').style.display = 'none';
+        
+        // Proceed with analysis
+        const result = await API.analyzeAssessment(modelType, filledFeatures, companyId);
+        currentAssessment = result;
+        const assessmentIdStr = String(result.assessment_id);
+        navigateTo('result', assessmentIdStr);
+        
+    } catch (error) {
+        console.error('[ERROR] Analysis with medians failed:', error);
+        document.getElementById('fileError').innerText = `Error: ${error.message}`;
+    }
 }
 
 async function submitAssessment() {
     try {
         const modelType = document.getElementById('modelType').value;
+        const companyId = document.getElementById('companyId').value ? parseInt(document.getElementById('companyId').value) : null;
         const numFeatures = modelType === 'model_30' ? 30 : 50;
         
         const features = {};
@@ -135,7 +359,7 @@ async function submitAssessment() {
         
         if (!isValid) return;
         
-        const result = await API.analyzeAssessment(modelType, features);
+        const result = await API.analyzeAssessment(modelType, features, companyId);
         currentAssessment = result;
         const assessmentIdStr = String(result.assessment_id);
         navigateTo('result', assessmentIdStr);

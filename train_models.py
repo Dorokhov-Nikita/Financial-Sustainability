@@ -164,6 +164,9 @@ if X.isna().any().any() or not np.isfinite(X.to_numpy()).all():
 
 print(f"Дані завантажені. Розмір: {X.shape}")
 
+# Обчислення медіан для всіх ознак
+feature_medians = X.median().to_dict()
+
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -302,6 +305,7 @@ for config in CONFIGS:
         "cv_pr_auc_mean": float(cv_scores.mean()),
         "cv_pr_auc_std": float(cv_scores.std(ddof=1)),
         "threshold_oof_f1": threshold_info["oof_f1"],
+        "feature_medians": feature_medians,
     }
     joblib.dump(artifact, model_path)
     print(f"  Модель збережена: {model_path}")

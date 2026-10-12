@@ -39,7 +39,7 @@ function renderProfileForm(user) {
         <form id="profileForm">
             <div class="form-group">
                 <label for="profUsername">Username</label>
-                <input type="text" id="profUsername" value="${user.username || ''}" placeholder="Username" disabled>
+                <input type="text" id="profUsername" value="${user.username || ''}" placeholder="Username">
             </div>
 
             <div class="form-group">
@@ -60,6 +60,7 @@ function renderProfileForm(user) {
         e.preventDefault();
 
         const profileData = {
+            username: document.getElementById('profUsername').value,
             email: document.getElementById('profEmail').value
         };
 
@@ -67,6 +68,7 @@ function renderProfileForm(user) {
             await API.updateProfile(profileData);
             showAlert('profileAlert', 'Profile updated successfully!', 'success');
             currentUser = await API.getProfile();
+            updateUI();
         } catch (error) {
             showAlert('profileAlert', error.message, 'error');
         }

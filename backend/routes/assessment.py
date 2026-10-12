@@ -75,6 +75,31 @@ FEATURE_MAPPING = {
 # Feature names for both models (in order)
 FEATURE_NAMES = list(FEATURE_MAPPING.keys())
 
+@assessment_bp.route('/medians/<model_type>', methods=['GET'])
+def get_medians(model_type):
+    """Get feature medians for a specific model"""
+    if model_type not in ['model_30', 'model_50']:
+        return jsonify({'error': 'Invalid model type'}), 400
+    
+    try:
+        artifact = load_model(model_type)
+        medians = artifact.get('feature_medians', {})
+        
+        # Transform medians from description keys to db_name keys
+        transformed_medians = {}
+        for db_name, description in FEATURE_MAPPING.items():
+            if description in medians:
+                transformed_medians[db_name] = medians[description]
+        
+        return jsonify({
+            'medians': transformed_medians,
+            'model_type': model_type
+        }), 200
+    except FileNotFoundError as e:
+        return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'error': f'Error loading medians: {str(e)}'}), 500
+
 @assessment_bp.route('/analyze', methods=['POST'])
 def analyze():
     """Analyze financial data and make prediction"""
@@ -89,6 +114,12 @@ def analyze():
         if model_type not in ['model_30', 'model_50']:
             return jsonify({'error': 'Invalid model type'}), 400
         
+        # Load model artifact
+        artifact = load_model(model_type)
+        model = artifact['model']
+        model_features = artifact['features']
+        threshold = artifact['threshold']
+        
         # Get features from request
         features_data = request.json.get('features', {})
         
@@ -96,34 +127,13 @@ def analyze():
         if not isinstance(features_data, dict):
             return jsonify({'error': 'Features must be a dictionary'}), 400
         
-        # Load model and get its metadata
-        # Create reverse mapping (description to db_name)
-        DESCRIPTION_TO_DBNAME = {}
-        for db_name, description_with_space in FEATURE_MAPPING.items():
-            desc_clean = description_with_space.strip()
-            DESCRIPTION_TO_DBNAME[desc_clean.lower()] = db_name
-        
-        # Handle both direct feature names and description-based lookup
-        normalized_features = {}
-        for key, value in features_data.items():
-            if key in features_data:
-                normalized_features[key] = value
-            elif key.lower() in DESCRIPTION_TO_DBNAME:
-                normalized_features[DESCRIPTION_TO_DBNAME[key.lower()]] = value
-            elif (' ' + key) in FEATURE_MAPPING.values():
-                # If key has leading space added
-                for db_name, mapped_name in FEATURE_MAPPING.items():
-                    if mapped_name == (' ' + key):
-                        normalized_features[db_name] = value
-                        break
-        
         # Map our feature names to model feature names and create data
         X_dict = {}
-        for our_name in normalized_features:
+        for our_name, value in features_data.items():
             # Get the mapped feature name (with leading space as in original data)
             mapped_name = FEATURE_MAPPING.get(our_name)
             if mapped_name and mapped_name in model_features:
-                X_dict[mapped_name] = normalized_features[our_name]
+                X_dict[mapped_name] = value
         
         # Create DataFrame with the required features in the right order
         X = pd.DataFrame([{f: X_dict.get(f) for f in model_features}])
@@ -151,9 +161,13 @@ def analyze():
         else:
             status = 'safe'
         
+        # Get company_id from request
+        company_id = request.json.get('company_id')
+        
         # Save to database
         assessment = FinancialAssessment(
             user_id=user_id,
+            company_id=company_id,
             model_type=model_type,
             probability=prob
         )
@@ -190,12 +204,22 @@ def get_history():
         return jsonify({'error': 'Not authenticated'}), 401
     
     try:
-        assessments = FinancialAssessment.query.filter_by(user_id=user_id).order_by(
-            FinancialAssessment.created_at.desc()
-        ).all()
+        query = FinancialAssessment.query.filter_by(user_id=user_id)
+        
+        # Filter by company_id if provided
+        company_id = request.args.get('company_id', type=int)
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        
+        assessments = query.order_by(FinancialAssessment.id.asc()).all()
+        
+        # Get unique company_ids
+        all_assessments = FinancialAssessment.query.filter_by(user_id=user_id).all()
+        company_ids = sorted(set(a.company_id for a in all_assessments if a.company_id is not None))
         
         return jsonify({
-            'assessments': [a.to_dict(include_features=True) for a in assessments]
+            'assessments': [a.to_dict(include_features=True) for a in assessments],
+            'company_ids': company_ids
         }), 200
     
     except Exception as e:
@@ -223,14 +247,137 @@ def get_assessment(assessment_id):
         
         # Add all features
         for feature_name in FEATURE_NAMES:
-            result[feature_name] = getattr(assessment, feature_name)
+            result[feature_name] = getattr(assessment, feature_name, None)
         
-        # Load model to get threshold
+        # Load model to get threshold and calculate SHAP
         try:
             model_artifact = load_model(assessment.model_type)
             result['threshold'] = model_artifact['threshold']
-        except:
-            result['threshold'] = 0.5
+            
+            # Prepare data for SHAP
+            model = model_artifact['model']
+            model_features = model_artifact['features']
+            
+            # Create DataFrame with assessment features
+            feature_values = {}
+            for feature in model_features:
+                # Find matching database column name
+                db_name = None
+                for db_col, mapped_name in FEATURE_MAPPING.items():
+                    if mapped_name == feature:
+                        db_name = db_col
+                        break
+                
+                if db_name:
+                    feature_values[feature] = getattr(assessment, db_name)
+            
+            X = pd.DataFrame([feature_values])
+            
+            # Calculate SHAP values
+            try:
+                import shap
+                
+                # Validate that we have all features
+                missing_features = [f for f in model_features if f not in X.columns]
+                if missing_features:
+                    raise ValueError(f"Missing features in data: {missing_features}")
+                
+                # Ensure feature order matches model_features exactly
+                X_ordered = X[model_features]
+                
+                # Use TreeExplainer for tree-based models
+                if 'lgbm' in assessment.model_type.lower() or hasattr(model, 'named_steps'):
+                    # For pipeline with LightGBM
+                    actual_model = model[-1] if hasattr(model, 'named_steps') else model
+                else:
+                    # For Random Forest
+                    actual_model = model
+                
+                explainer = shap.TreeExplainer(actual_model)
+                shap_values = explainer.shap_values(X_ordered)
+                
+                # Handle different output formats from SHAP
+                # For binary classification, we need class 1 (bankruptcy risk)
+                if isinstance(shap_values, list):
+                    # List format - take positive class [1]
+                    if len(shap_values) > 1:
+                        shap_vals = shap_values[1][0]
+                        base_value = explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value
+                    else:
+                        raise ValueError(f"Unexpected SHAP list format: {len(shap_values)} elements")
+                elif hasattr(shap_values, 'ndim'):
+                    # Array format
+                    if shap_values.ndim == 3:
+                        # RandomForest returns (n_samples, n_features, n_classes)
+                        # Take positive class (index 1)
+                        shap_vals = shap_values[0, :, 1]
+                        # For RF, expected_value corresponds to classes - take class 1
+                        if isinstance(explainer.expected_value, (list, np.ndarray)):
+                            base_value = explainer.expected_value[1] if len(explainer.expected_value) > 1 else explainer.expected_value[0]
+                        else:
+                            base_value = explainer.expected_value
+                    elif shap_values.ndim == 2:
+                        # LightGBM returns (n_samples, n_features)
+                        # Note: LightGBM TreeExplainer returns SHAP for positive class directly
+                        shap_vals = shap_values[0]
+                        # LightGBM expected_value for binary classification
+                        if isinstance(explainer.expected_value, (list, np.ndarray)):
+                            base_value = explainer.expected_value[1] if len(explainer.expected_value) > 1 else explainer.expected_value[0]
+                        else:
+                            base_value = explainer.expected_value
+                    else:
+                        raise ValueError(f"Unexpected SHAP array dimensions: {shap_values.ndim}")
+                else:
+                    raise ValueError(f"Unexpected SHAP output type: {type(shap_values)}")
+                
+                # Validate shap_vals length matches model_features
+                if len(shap_vals) != len(model_features):
+                    raise ValueError(f"SHAP values length ({len(shap_vals)}) doesn't match model features ({len(model_features)})")
+                
+                # Create feature importance list with proper correspondence
+                feature_importance = []
+                for i, feature in enumerate(model_features):
+                    shap_val = shap_vals[i]
+                    try:
+                        feature_value = float(X_ordered[feature].iloc[0])
+                    except (KeyError, IndexError) as e:
+                        raise ValueError(f"Cannot get value for feature '{feature}': {str(e)}")
+                    
+                    try:
+                        shap_float = float(shap_val) if isinstance(shap_val, (int, float, np.number)) else float(shap_val)
+                    except (TypeError, ValueError) as e:
+                        raise ValueError(f"Cannot convert SHAP value for '{feature}' to float: {str(e)}")
+                    
+                    feature_importance.append({
+                        'feature': feature,
+                        'value': feature_value,
+                        'shap_value': shap_float,
+                        'abs_shap': abs(shap_float)
+                    })
+                
+                # Sort by absolute SHAP value and take top 10
+                feature_importance.sort(key=lambda x: x['abs_shap'], reverse=True)
+                result['top_features'] = feature_importance[:10]
+                result['base_value'] = float(base_value)
+                
+            except Exception as shap_error:
+                # Log detailed error and return meaningful message
+                error_detail = f"{type(shap_error).__name__}: {str(shap_error)}"
+                print(f"SHAP calculation failed: {error_detail}")
+                import traceback
+                traceback.print_exc()
+                result['top_features'] = []
+                result['base_value'] = None
+                result['shap_error'] = error_detail  # Include error in response for debugging
+        
+        except Exception as model_error:
+            # If model loading/threshold fails, still return assessment with probability
+            error_detail = f"{type(model_error).__name__}: {str(model_error)}"
+            print(f"Model loading error: {error_detail}")
+            result['threshold'] = None
+            result['top_features'] = []
+            result['base_value'] = None
+            result['model_error'] = error_detail
         
         return jsonify(result), 200
     

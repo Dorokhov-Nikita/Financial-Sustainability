@@ -34,6 +34,7 @@ class FinancialAssessment(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user_data.id'), nullable=False)
+    company_id = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     # Model and result info
@@ -110,6 +111,7 @@ class FinancialAssessment(db.Model):
         result = {
             'id': self.id,
             'user_id': self.user_id,
+            'company_id': self.company_id,
             'created_at': self.created_at.isoformat(),
             'model_type': self.model_type,
             'probability': self.probability,

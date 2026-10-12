@@ -31,6 +31,12 @@ def update_profile():
     
     data = request.get_json()
     
+    if 'username' in data:
+        existing = User.query.filter_by(username=data['username']).filter(User.id != user_id).first()
+        if existing:
+            return jsonify({'error': 'Username already exists'}), 409
+        user.username = data['username']
+    
     if 'email' in data:
         existing = User.query.filter_by(email=data['email']).filter(User.id != user_id).first()
         if existing:
@@ -39,6 +45,7 @@ def update_profile():
     
     try:
         db.session.commit()
+        session['username'] = user.username
         return jsonify({
             'message': 'Profile updated successfully',
             'user': user.to_dict()

@@ -85,18 +85,24 @@ class API {
     }
 
     // Assessment endpoints
-    static analyzeAssessment(modelType, features) {
+    static analyzeAssessment(modelType, features, companyId) {
         return this.request('/assessment/analyze', {
             method: 'POST',
             body: JSON.stringify({
                 model_type: modelType,
-                features: features
+                features: features,
+                company_id: companyId
             })
         });
     }
 
-    static getAssessmentHistory() {
-        return this.request('/assessment/history');
+    static getMedians(modelType) {
+        return this.request(`/assessment/medians/${modelType}`);
+    }
+
+    static getAssessmentHistory(companyId = null) {
+        const url = companyId ? `/assessment/history?company_id=${companyId}` : '/assessment/history';
+        return this.request(url);
     }
 
     static getAssessment(id) {
