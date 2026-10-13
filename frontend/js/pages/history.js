@@ -8,7 +8,7 @@ function renderHistoryPage() {
                 <h2>Assessment History</h2>
                 <div style="margin-bottom: 20px;">
                     <label>Filter by Company:</label>
-                    <select id="companyFilter" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+                    <select id="companyFilter" style="padding: 10px; border: 1px solid #334155; border-radius: 4px; width: 200px; background-color: #0f172a; color: #f1f5f9;">
                         <option value="">All Companies</option>
                     </select>
                 </div>
@@ -74,7 +74,7 @@ function renderHistoryListContent(assessments) {
                             <th>ID</th>
                             <th>Date</th>
                             <th>Company</th>
-                            <th>Model</th>
+                            <th>Indicators</th>
                             <th>Status</th>
                             <th>Probability</th>
                             <th>Results</th>
@@ -92,7 +92,7 @@ function renderHistoryListContent(assessments) {
             minute: '2-digit'
         });
         
-        const modelName = assessment.model_type === 'model_30' ? 'Random Forest (30)' : 'LightGBM SMOTE (50)';
+        const modelName = assessment.model_type === 'model_30' ? '30 indicators' : '50 indicators';
         const statusDisplayText = assessment.status.charAt(0).toUpperCase() + assessment.status.slice(1);
         
         // Color badges based on status
@@ -208,3 +208,4 @@ function showAssessmentDetails(assessmentId) {
         modal.style.display = 'flex';
     }
 }
+

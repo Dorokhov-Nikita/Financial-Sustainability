@@ -330,31 +330,34 @@ function generateStabilityConclusion(assessment) {
 
 function renderStabilityFindings(findings) {
     if (!findings || findings.length === 0) {
-        return '<p style="color: #999;">No financial data available for analysis.</p>';
+        return '<p style="color: #94a3b8;">No financial data available for analysis.</p>';
     }
     
     let html = '';
     
     findings.forEach((finding, index) => {
-        let bgColor, borderColor, icon;
+        let bgColor, borderColor, textColor, icon;
         
         if (finding.level === 'positive') {
-            bgColor = '#e6ffe6';
-            borderColor = '#28a745';
+            bgColor = 'rgba(16, 185, 129, 0.1)';
+            borderColor = '#10b981';
+            textColor = '#d1fae5';
             icon = '✓';
         } else if (finding.level === 'neutral') {
-            bgColor = '#fff9e6';
-            borderColor = '#ffc107';
+            bgColor = 'rgba(245, 158, 11, 0.1)';
+            borderColor = '#f59e0b';
+            textColor = '#fef3c7';
             icon = '→';
         } else {
-            bgColor = '#ffe6e6';
-            borderColor = '#dc3545';
+            bgColor = 'rgba(239, 68, 68, 0.1)';
+            borderColor = '#ef4444';
+            textColor = '#fee2e2';
             icon = '!';
         }
         
         html += `
-            <div style="background-color: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 12px 15px; margin-bottom: 10px; border-radius: 4px;">
-                <p style="margin: 0; font-size: 0.95em; line-height: 1.6;">
+            <div style="background-color: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 16px 18px; margin-bottom: 12px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 0.95em; line-height: 1.7; color: ${textColor};">
                     ${finding.text}
                 </p>
             </div>
@@ -399,7 +402,7 @@ function displayResultsContent(assessment) {
     }
     
     const statusDisplayText = assessment.status.charAt(0).toUpperCase() + assessment.status.slice(1);
-    const modelTypeText = assessment.model_type === 'model_30' ? 'Random Forest (30 Features)' : 'LightGBM SMOTE (50 Features)';
+    const modelTypeText = assessment.model_type === 'model_30' ? '30 indicators' : '50 indicators';
     
     // Calculate stability metrics and findings
     const stabilityFindings = analyzeStabilityFindings(assessment);
@@ -430,9 +433,9 @@ function displayResultsContent(assessment) {
                         </div>
                     </div>
 
-                    <div class="card" style="background-color: #e7f3ff; border-left: 4px solid #0066cc; margin-bottom: 20px; padding: 15px;">
-                        <h4 style="margin-top: 0; color: #0066cc;">📊 What Does This Score Mean?</h4>
-                        <p style="margin: 10px 0;">
+                    <div class="card" style="background-color: rgba(59, 130, 246, 0.15); border-left: 4px solid #3b82f6; margin-bottom: 20px; padding: 15px;">
+                        <h4 style="margin-top: 0; color: #60a5fa;">📊 What Does This Score Mean?</h4>
+                        <p style="margin: 10px 0; color: #cbd5e1;">
                             The <strong>Predicted Financial Distress Score</strong> (0-100%) indicates the probability that the company 
                             may experience significant financial difficulties. Higher scores suggest greater risk of financial distress, 
                             including potential inability to meet obligations, liquidity challenges, or operational difficulties.
@@ -455,9 +458,9 @@ function displayResultsContent(assessment) {
                         ${findingsHtml}
                     </div>
 
-                    <div class="card" style="background-color: #f0f8e6; border-left: 4px solid #28a745; margin-bottom: 20px; padding: 15px;">
-                        <h4 style="margin-top: 0; color: #28a745;">📋 Financial Stability Conclusion</h4>
-                        <p style="margin: 10px 0; font-size: 1em; line-height: 1.6;">
+                    <div class="card" style="background-color: rgba(16, 185, 129, 0.15); border-left: 4px solid #10b981; margin-bottom: 20px; padding: 15px;">
+                        <h4 style="margin-top: 0; color: #6ee7b7;">📋 Financial Stability Conclusion</h4>
+                        <p style="margin: 10px 0; font-size: 1em; line-height: 1.6; color: #cbd5e1;">
                             ${stabilityConclusion}
                         </p>
                     </div>
@@ -476,8 +479,8 @@ function displayResultsContent(assessment) {
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <div class="card">
-                            <h3>Assessment Details</h3>
-                            <p><strong>Model Used:</strong> ${modelTypeText}</p>
+                            <h3>Model Details</h3>
+                            <p><strong>Model Used:</strong> ${assessment.model_type === 'model_30' ? 'Random Forest - 30 indicators' : 'LightGBM with SMOTE - 50 indicators'}</p>
                             <p><strong>Risk Category:</strong> <span style="color: ${statusColor}; font-weight: bold; text-transform: uppercase;">${statusDisplayText}</span></p>
                             <p><strong>Prediction Threshold:</strong> ${assessment.threshold !== null ? assessment.threshold.toFixed(3) : 'N/A'}</p>
                         </div>
@@ -492,10 +495,10 @@ function displayResultsContent(assessment) {
 
                     <div class="card" style="margin-bottom: 20px;">
                         <h3>Financial Distress Risk Indicator</h3>
-                        <div style="background: #f0f0f0; border-radius: 10px; height: 30px; overflow: hidden;">
-                            <div style="background: linear-gradient(90deg, #28a745 0%, #ffc107 50%, #dc3545 100%); height: 100%; width: ${probabilityPercent}%; transition: width 0.3s;"></div>
+                        <div style="background: #334155; border-radius: 10px; height: 30px; overflow: hidden;">
+                            <div style="background: linear-gradient(90deg, #10b981 0%, #f59e0b 50%, #ef4444 100%); height: 100%; width: ${probabilityPercent}%; transition: width 0.3s;"></div>
                         </div>
-                        <div style="margin-top: 10px; display: flex; justify-content: space-between; font-size: 0.9em;">
+                        <div style="margin-top: 10px; display: flex; justify-content: space-between; font-size: 0.9em; color: #94a3b8;">
                             <span>Low Risk (0%)</span>
                             <span>Medium Risk (50%)</span>
                             <span>High Risk (100%)</span>
@@ -528,10 +531,10 @@ function renderTopFeatures(topFeatures) {
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr style="border-bottom: 2px solid #ddd;">
-                            <th style="text-align: left; padding: 10px;">Indicator</th>
-                            <th style="text-align: right; padding: 10px;">Current Value</th>
-                            <th style="text-align: right; padding: 10px;">Impact</th>
+                        <tr style="border-bottom: 2px solid #334155;">
+                            <th style="text-align: left; padding: 10px; color: #60a5fa;">Indicator</th>
+                            <th style="text-align: right; padding: 10px; color: #60a5fa;">Current Value</th>
+                            <th style="text-align: right; padding: 10px; color: #60a5fa;">Impact</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -542,11 +545,11 @@ function renderTopFeatures(topFeatures) {
         const impactBar = Math.abs(shap) > 0.5 ? '█' : (Math.abs(shap) > 0.2 ? '▓' : '░');
         
         html += `
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 10px;"><strong>${index + 1}. ${feature.feature}</strong></td>
-                <td style="text-align: right; padding: 10px;">${typeof feature.value === 'number' ? feature.value.toFixed(4) : feature.value}</td>
+            <tr style="border-bottom: 1px solid #334155;">
+                <td style="padding: 10px; color: #cbd5e1;"><strong>${index + 1}. ${feature.feature}</strong></td>
+                <td style="text-align: right; padding: 10px; color: #cbd5e1;">${typeof feature.value === 'number' ? feature.value.toFixed(4) : feature.value}</td>
                 <td style="text-align: right; padding: 10px;">
-                    <div style="background: #f0f0f0; border-radius: 4px; padding: 4px; font-family: monospace; font-size: 0.9em;">
+                    <div style="background: #334155; border-radius: 4px; padding: 4px; font-family: monospace; font-size: 0.9em; color: #60a5fa;">
                         ${impactBar.repeat(Math.min(5, Math.ceil(Math.abs(shap) * 10)))} ${Math.abs(shap).toFixed(3)}
                     </div>
                 </td>
@@ -558,7 +561,7 @@ function renderTopFeatures(topFeatures) {
                     </tbody>
                 </table>
             </div>
-            <p style="color: var(--text-light); margin-top: 15px; font-size: 0.9em;">
+            <p style="color: #94a3b8; margin-top: 15px; font-size: 0.9em;">
                 <strong>Note:</strong> SHAP values show how each indicator contributed to the final prediction. 
                 Positive values increase financial distress risk, negative values reduce it.
             </p>
@@ -571,9 +574,9 @@ function renderTopFeatures(topFeatures) {
 function renderNoFeaturesWarning(assessment) {
     if (assessment.shap_error) {
         return `
-            <div class="card" style="background-color: #fff3cd; border-left: 4px solid #ff9800; margin-bottom: 20px; padding: 15px;">
-                <h4 style="margin-top: 0; color: #ff9800;">⚠️ Feature Importance Unavailable</h4>
-                <p style="margin: 10px 0;">
+            <div class="card" style="background-color: rgba(245, 158, 11, 0.15); border-left: 4px solid #f59e0b; margin-bottom: 20px; padding: 15px;">
+                <h4 style="margin-top: 0; color: #fcd34d;">⚠️ Feature Importance Unavailable</h4>
+                <p style="margin: 10px 0; color: #cbd5e1;">
                     The detailed analysis of which indicators contributed most to this prediction could not be calculated.
                 </p>
                 <p style="margin: 10px 0; font-size: 0.9em; color: #666;">
@@ -592,34 +595,34 @@ function getRecommendations(assessment) {
     
     if (probability >= 0.7) {
         recommendations.push(`
-            <li style="padding: 10px; margin-bottom: 10px; background: #ffe6e6; border-left: 4px solid #dc3545;">
+            <li style="padding: 12px 15px; margin-bottom: 12px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; color: #fee2e2; border-radius: 6px;">
                 <strong>Critical Alert:</strong> The company shows high financial distress risk. Immediate financial restructuring is recommended.
             </li>
         `);
         recommendations.push(`
-            <li style="padding: 10px; margin-bottom: 10px; background: #ffe6e6; border-left: 4px solid #dc3545;">
+            <li style="padding: 12px 15px; margin-bottom: 12px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; color: #fee2e2; border-radius: 6px;">
                 <strong>Action Required:</strong> Review debt obligations, cash flow management, and operational efficiency.
             </li>
         `);
     } else if (probability >= 0.3) {
         recommendations.push(`
-            <li style="padding: 10px; margin-bottom: 10px; background: #fff3cd; border-left: 4px solid #ffc107;">
+            <li style="padding: 12px 15px; margin-bottom: 12px; background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; color: #fef3c7; border-radius: 6px;">
                 <strong>Moderate Risk:</strong> The company has some financial weaknesses that need attention.
             </li>
         `);
         recommendations.push(`
-            <li style="padding: 10px; margin-bottom: 10px; background: #fff3cd; border-left: 4px solid #ffc107;">
+            <li style="padding: 12px 15px; margin-bottom: 12px; background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; color: #fef3c7; border-radius: 6px;">
                 <strong>Recommendation:</strong> Improve profitability margins, reduce debt levels, and strengthen working capital.
             </li>
         `);
     } else {
         recommendations.push(`
-            <li style="padding: 10px; margin-bottom: 10px; background: #e6ffe6; border-left: 4px solid #28a745;">
+            <li style="padding: 12px 15px; margin-bottom: 12px; background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; color: #d1fae5; border-radius: 6px;">
                 <strong>Stable Financial Position:</strong> The company shows good financial health and low distress risk.
             </li>
         `);
         recommendations.push(`
-            <li style="padding: 10px; margin-bottom: 10px; background: #e6ffe6; border-left: 4px solid #28a745;">
+            <li style="padding: 12px 15px; margin-bottom: 12px; background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; color: #d1fae5; border-radius: 6px;">
                 <strong>Continue:</strong> Maintain current financial practices and monitor key indicators regularly.
             </li>
         `);

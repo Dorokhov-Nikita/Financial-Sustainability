@@ -194,3 +194,4 @@ function showAlert(elementId, message, type = 'info') {
 // Export functions for use in other modules
 window.navigateTo = navigateTo;
 window.showAlert = showAlert;
+

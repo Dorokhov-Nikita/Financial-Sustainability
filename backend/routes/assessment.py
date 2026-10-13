@@ -127,7 +127,10 @@ def analyze():
         if not isinstance(features_data, dict):
             return jsonify({'error': 'Features must be a dictionary'}), 400
         
-        # Map our feature names to model feature names and create data
+        # Keep original features_data for database storage
+        original_features_data = features_data.copy()
+        
+        # Map our feature names to model feature names and create data for prediction
         X_dict = {}
         for our_name, value in features_data.items():
             # Get the mapped feature name (with leading space as in original data)
@@ -172,10 +175,10 @@ def analyze():
             probability=prob
         )
         
-        # Store all features in the database
+        # Store all features in the database (use original features entered by user)
         for feature_name in FEATURE_NAMES:
-            if feature_name in features_data:
-                setattr(assessment, feature_name, features_data[feature_name])
+            if feature_name in original_features_data:
+                setattr(assessment, feature_name, original_features_data[feature_name])
         
         db.session.add(assessment)
         db.session.commit()

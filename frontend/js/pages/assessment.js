@@ -38,19 +38,19 @@ function showInputMode() {
     modeDiv.innerHTML = `
         <div class="card">
             <h3>Enter Financial Indicators</h3>
-            <p style="color: var(--text-light); margin-bottom: 20px;">Select model type and enter financial data</p>
+            <p style="color: var(--text-light); margin-bottom: 20px;">Select number of indicators and enter financial data</p>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                 <div>
-                    <label>Model Type:</label>
-                    <select id="modelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                        <option value="model_30">Random Forest (30)</option>
-                        <option value="model_50">LightGBM SMOTE (50)</option>
+                    <label>Indicators:</label>
+                    <select id="modelType" style="width: 100%; padding: 10px; border: 1px solid #334155; border-radius: 4px; background-color: #0f172a; color: #f1f5f9;">
+                        <option value="model_30">30 indicators</option>
+                        <option value="model_50">50 indicators</option>
                     </select>
                 </div>
                 <div>
                     <label>Company ID:</label>
-                    <input type="number" id="companyId" placeholder="Optional" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    <input type="number" id="companyId" placeholder="Optional" style="width: 100%; padding: 10px; border: 1px solid #334155; border-radius: 4px; background-color: #0f172a; color: #f1f5f9;">
                 </div>
             </div>
 
@@ -89,7 +89,7 @@ function updateFeaturesForm() {
                        step="0.0001" 
                        id="feature_${feature.name}" 
                        placeholder="Enter value (use . for decimal)" 
-                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                       style="width: 100%; padding: 8px; border: 1px solid #334155; border-radius: 4px; background-color: #0f172a; color: #f1f5f9;"
                        onkeypress="if(event.key===','){event.preventDefault();return false;}">
             </div>
         `;
@@ -109,20 +109,20 @@ function showFileMode() {
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                 <div>
-                    <label>Model Type:</label>
-                    <select id="fileModelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                        <option value="model_30">Random Forest (30)</option>
-                        <option value="model_50">LightGBM SMOTE (50)</option>
+                    <label>Indicators:</label>
+                    <select id="fileModelType" style="width: 100%; padding: 10px; border: 1px solid #334155; border-radius: 4px; background-color: #0f172a; color: #f1f5f9;">
+                        <option value="model_30">30 indicators</option>
+                        <option value="model_50">50 indicators</option>
                     </select>
                 </div>
                 <div>
                     <label>Company ID:</label>
-                    <input type="number" id="fileCompanyId" placeholder="Optional" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    <input type="number" id="fileCompanyId" placeholder="Optional" style="width: 100%; padding: 10px; border: 1px solid #334155; border-radius: 4px; background-color: #0f172a; color: #f1f5f9;">
                 </div>
             </div>
 
             <input type="file" id="csvFile" accept=".csv" style="margin-bottom: 20px;" onchange="handleCSVUpload()">
-            <div id="fileError" style="color: red; margin-bottom: 10px;"></div>
+            <div id="fileError" style="color: #fca5a5; margin-bottom: 10px;"></div>
             <div id="csvFieldsContainer" style="display: none;"></div>
         </div>
     `;
@@ -198,10 +198,11 @@ function renderCSVFieldsForm(parsedFeatures, modelType) {
     const container = document.getElementById('csvFieldsContainer');
     
     let html = '<h4 style="margin-top: 20px; margin-bottom: 15px;">Review and Edit Values:</h4>';
-    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+    html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">';
     
     featuresToUse.forEach(feature => {
-        const value = parsedFeatures[feature.name] || '';
+        const value = parsedFeatures[feature.name];
+        const displayValue = value !== undefined && value !== null ? value : '';
         html += `
             <div>
                 <label style="display: block; margin-bottom: 5px; font-size: 0.9em;">
@@ -210,9 +211,9 @@ function renderCSVFieldsForm(parsedFeatures, modelType) {
                 <input type="number" 
                        step="0.0001" 
                        id="csv_feature_${feature.name}" 
-                       value="${value || ''}"
+                       value="${displayValue}"
                        placeholder="Enter value (use . for decimal)" 
-                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                       style="width: 100%; padding: 8px; border: 1px solid #334155; border-radius: 4px; background-color: #0f172a; color: #f1f5f9;"
                        onkeypress="if(event.key===','){event.preventDefault();return false;}">
             </div>
         `;
@@ -239,7 +240,7 @@ async function submitCSVAnalysis() {
         
         for (const feature of featuresToUse) {
             const value = document.getElementById(`csv_feature_${feature.name}`).value;
-            if (!value) {
+            if (value === '' || value === null) {
                 emptyFields.push(feature);
             } else {
                 features[feature.name] = parseFloat(value);
@@ -290,7 +291,7 @@ async function showMedianFillDialog(emptyFields, filledFeatures, modelType, comp
         modalBody.innerHTML = `
             <h3>Fill Missing Values?</h3>
             <p style="margin: 15px 0;">The following fields are empty:</p>
-            <div style="background-color: #f0f0f0; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 200px; overflow-y: auto;">
+            <div style="background-color: #0f172a; border: 1px solid #334155; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 200px; overflow-y: auto; color: #f1f5f9;">
                 ${emptyFieldsList}
             </div>
             <p style="margin-bottom: 15px;">Would you like to fill them with median values from the training data?</p>
@@ -448,3 +449,4 @@ function showAlert(elementId, message, type = 'info') {
         container.appendChild(div);
     }
 }
+

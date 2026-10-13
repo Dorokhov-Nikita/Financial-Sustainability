@@ -22,27 +22,27 @@ function renderHome() {
                 <div class="features-grid">
                     <div class="feature-card">
                         <h3>Financial Analysis</h3>
-                        <p>Comprehensive analysis of your company's financial indicators and ratios</p>
+                        <p>Machine learning models analyze your company's financial indicators to predict distress risk using 30 or 50 key metrics</p>
                     </div>
                     <div class="feature-card">
                         <h3>Sustainability Score</h3>
-                        <p>Get a detailed sustainability score based on industry standards</p>
+                        <p>Get a detailed financial health score based on liquidity, profitability, leverage, and cash flow analysis</p>
                     </div>
                     <div class="feature-card">
                         <h3>Recommendations</h3>
-                        <p>Personalized recommendations to improve financial health</p>
+                        <p>Receive personalized recommendations to improve your company's financial health and stability</p>
                     </div>
                     <div class="feature-card">
                         <h3>Analytics Dashboard</h3>
-                        <p>Track your progress with detailed analytics and charts</p>
+                        <p>Track and compare multiple assessments with detailed charts and comprehensive metrics analysis</p>
                     </div>
                     <div class="feature-card">
                         <h3>Historical Data</h3>
-                        <p>Compare assessments over time to track improvements</p>
+                        <p>View all your past assessments in organized history to track financial progress over time</p>
                     </div>
                     <div class="feature-card">
                         <h3>Expert Guide</h3>
-                        <p>Learn about financial indicators with our comprehensive reference guide</p>
+                        <p>Learn about all 50 financial indicators with detailed explanations, formulas, and best practice insights</p>
                     </div>
                 </div>
     `;
@@ -64,3 +64,5 @@ function renderHome() {
     
     content.innerHTML = html;
 }
+
+
